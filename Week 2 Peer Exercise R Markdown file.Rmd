@@ -1,0 +1,113 @@
+---
+title: "RR - Week 2 Peer Assignment"
+author: "Aravindan Krishnan"
+date: "January 9, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading packages dplyr and lubridate
+
+
+```{r Loaddplyr,lubridate package, echo=TRUE}
+library(dplyr)
+library(lubridate)
+```
+
+## Reading and Processing the Data (Remove NA values)
+
+```{r Loadprocessactivitydata}
+### 1.Load the data (i.e. read.csv())
+activitymondata <- read.csv("C:/Users/aravindan.krishnan/Documents/clean data/activity.csv")
+### Process the Data (Remove NA values)
+validactivitymondata <- activitymondata[complete.cases(activitymondata),]
+```
+
+## What is mean total number of steps taken per day?
+
+
+```{r totalsteps, echo=TRUE}
+### 1.Calculate the total number of steps taken per day
+stepsbyday <- group_by(validactivitymondata,date)
+stepssummarybyday <- summarize(stepsbyday,totalsteps=sum(steps))
+### Make a histogram of the total number of steps taken each day
+hist(stepssummarybyday$totalsteps)
+### Calculate and report the mean of the total number of steps taken per day
+mean(stepssummarybyday$totalsteps)
+### Calculate and report the median of the total number of steps taken per day
+median(stepssummarybyday$totalsteps)
+```
+
+## What is the average daily activity pattern?
+
+
+```{r avgdailyactivity, echo=TRUE}
+# Add leading zeros to minutes - eg: convert 5 minutes to 0005
+int <- sprintf("%04d",validactivitymondata$interval)
+# convert to HH:MM:SS still in char format only
+validactivitymondata$time <- format(strptime(int, format="%H%M"), format = "%H:%M:%S")
+ # Group by time intervals
+grpbytimeint <- group_by(validactivitymondata,time)
+# calculate avg steps by grouped time interval
+avgstepsbytimeint <- summarize(grpbytimeint, avg=mean(steps)) 
+# convert to real time format so that the time variable can be used in time series plotting
+avgstepsbytimeint$realtime <- hms(avgstepsbytimeint$time)
+# create empty plot
+plot(avgstepsbytimeint$realtime,avgstepsbytimeint$avg, type = "n") 
+# Add lines to plot
+lines(avgstepsbytimeint$realtime,avgstepsbytimeint$avg)
+# 2.Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+filter(avgstepsbytimeint, avg == max(avgstepsbytimeint$avg))
+```
+
+## Imputing missing values
+
+### 1.Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+```{r calculateNA, echo=TRUE}
+
+table(is.na(activitymondata))# How many NAs - check for count under TRUE
+```
+### 2.Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc. 3.Create a new dataset that is equal to the original dataset but with the missing data filled in.
+```{r fillNA, echo=TRUE}
+totalint <- sprintf("%04d",activitymondata$interval)
+activitymondata$time <- format(strptime(totalint, format="%H%M"), format = "%H:%M:%S")
+grpbytotaltimeint <- group_by(activitymondata,time)
+avgstepsbytotaltimeint <- summarize(grpbytotaltimeint, avg=mean(steps, na.rm = TRUE))
+joinactivitymondata <- inner_join(activitymondata, avgstepsbytotaltimeint, by = c("time" = "time"))
+joinactivitymondata[is.na(joinactivitymondata),]$steps <- joinactivitymondata[is.na(joinactivitymondata),]$avg
+head(select(joinactivitymondata, -avg))
+```
+### 4.Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+```{r histtotalsteps, echo=TRUE}
+
+grpbydate <- group_by(joinactivitymondata, by=date)
+totalstepsbydate <- summarize(grpbydate, newtotalsteps=sum(steps))
+hist(totalstepsbydate$newtotalsteps)
+mean(totalstepsbydate$newtotalsteps)
+median(totalstepsbydate$newtotalsteps)
+```
+## Are there differences in activity patterns between weekdays and weekends?
+### 1.Create a new factor variable in the dataset with two levels - "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
+
+```{r weekdayweekend}
+joinactivitymondata$date <- as.Date(joinactivitymondata$date)
+for(i in 1:length(joinactivitymondata$date)){
+if(weekdays(joinactivitymondata$date[i]) %in% c("Monday", "Tuesday","Wednesday","Thursday","Friday")){
+  joinactivitymondata$daytype[i] <- "weekday"
+} else {
+    joinactivitymondata$daytype[i] <- "weekend"
+}
+}
+head(joinactivitymondata)
+```
+### 2.Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). See the README file in the GitHub repository to see an example of what this plot should look like using simulated data.
+
+```{r panelplotweekendweekday}
+library(lattice)
+joinactivitymondata$daytype <- as.factor(joinactivitymondata$daytype)
+xyplot(avg~interval | daytype, data=joinactivitymondata, type="l", layout=c(1,2))
+
+```
