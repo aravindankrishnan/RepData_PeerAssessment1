@@ -21,7 +21,7 @@ library(lubridate)
 
 ```{r Loadprocessactivitydata}
 ### 1.Load the data (i.e. read.csv())
-activitymondata <- read.csv("C:/Users/aravindan.krishnan/Documents/clean data/activity.csv")
+activitymondata <- read.csv("~/Documents/R /R/Reproducible Research/activity.csv")
 ### Process the Data (Remove NA values)
 validactivitymondata <- activitymondata[complete.cases(activitymondata),]
 ```
@@ -71,6 +71,9 @@ filter(avgstepsbytimeint, avg == max(avgstepsbytimeint$avg))
 table(is.na(activitymondata))# How many NAs - check for count under TRUE
 ```
 ### 2.Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc. 3.Create a new dataset that is equal to the original dataset but with the missing data filled in.
+
+The imputing strategy is to substitute the missing values based on the average per time interval as we will certainly have data for all time intervals but necessarily for all dates. this is done by the code below.
+
 ```{r fillNA, echo=TRUE}
 totalint <- sprintf("%04d",activitymondata$interval)
 activitymondata$time <- format(strptime(totalint, format="%H%M"), format = "%H:%M:%S")
